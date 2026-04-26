@@ -34,7 +34,7 @@ En lugar de cuadros sueltos, armé un "Super Card" con efecto de vidrio que unif
 
 ---
 
-## 🧠 Desafíos técnicos que resolví solo
+##  Desafíos técnicos que resolví solo
 
 * **El problema de las imágenes de Last.fm:** Durante el laburo me di cuenta de que Last.fm no manda fotos de todos los artistas por un tema de derechos. A veces te manda un vacío o una estrella gris genérica. Para que el proyecto no se vea "roto", programé una función de *fallback*: si la imagen falla, el código genera en el momento un avatar con las iniciales del artista y los colores neón de la app. Así la UX siempre se mantiene impecable.
 * **Mobile First real:** Todo el CSS lo escribí a mano desde cero, pensando primero en el celular. La grilla se adapta sola de 1 columna en móvil a 4 en desktop sin usar Bootstrap ni librerías de diseño.
