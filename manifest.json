@@ -1,0 +1,21 @@
+{
+  "name": "RapRadar - Sonidos de la Calle",
+  "short_name": "RapRadar",
+  "description": "Tu radar principal para el Rap y Trap global.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#E2FF00",
+  "icons": [
+    {
+      "src": "https://ui-avatars.com/api/?name=RR&background=121212&color=E2FF00&size=192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://ui-avatars.com/api/?name=RR&background=121212&color=E2FF00&size=512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

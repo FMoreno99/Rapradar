@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapRadar - Sonidos de la Calle</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E2FF00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <nav id="main-nav">
+            <div class="logo">RAPRADAR</div>
+            <ul class="nav-links">
+                <li><a href="#home">Inicio</a></li>
+                <li><a href="#busca">Explorar</a></li>
+                <li><a href="#favoritos">Mi Crew</a></li>
+                <li><a href="#historico">Recientes</a></li>
+                <li><a href="#contato">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main id="app-container">
+        
+        <section id="home-view" class="view">
+            <div class="hero-banner">
+                <h1>SONIDOS DE LA CALLE</h1>
+                <p>Tu radar principal para el Rap y Trap global. Descubre quién domina el juego.</p>
+                <button onclick="navigate('busca')" class="btn-primary">EXPLORAR FLOW</button>
+            </div>
+            <div class="section-title">LO MEJOR DEL RAP & TRAP</div>
+            <div id="featured-list" class="grid-container"></div>
+        </section>
+
+        <section id="busca-view" class="view" style="display:none;">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="MC, BANDA O DJ (O deja en blanco para ver el Top)...">
+                <div class="filters">
+                    <select id="limit-filter">
+                        <option value="10">Ver 10 artistas</option>
+                        <option value="20">Ver 20 artistas</option>
+                    </select>
+                    <select id="genre-filter">
+                        <option value="rap">Top Rap</option>
+                        <option value="trap">Top Trap</option>
+                        <option value="drill">Top Drill</option>
+                        <option value="boombap">Top Boom Bap</option>
+                    </select>
+                </div>
+                <button onclick="searchArtists()" class="btn-primary">BUSCAR FLOW</button>
+            </div>
+            <div id="search-results" class="grid-container"></div>
+            <div id="pagination-container" style="text-align: center; padding: 20px; display: none;">
+                <button onclick="loadMoreResults()" class="btn-secondary">CARGAR MÁS</button>
+            </div>
+        </section>
+
+        <section id="detalle-view" class="view" style="display:none;">
+            <div id="detail-content"></div>
+        </section>
+
+        <section id="favoritos-view" class="view" style="display:none;">
+            <div class="section-title">MI CREW (FAVORITOS)</div>
+            <p class="section-subtitle">Tus MCs y productores con su biografía completa.</p>
+            <div id="favorites-list" class="grid-container"></div>
+        </section>
+
+        <section id="historico-view" class="view" style="display:none;">
+            <div class="section-title">ÚLTIMAS CONEXIONES</div>
+            <p class="section-subtitle">Artistas chequeados recientemente.</p>
+            <div id="history-list" class="grid-container"></div>
+        </section>
+
+        <section id="contato-view" class="view" style="display:none;">
+            <div class="contact-page-wrapper">
+                <div class="unified-contact-card glass-effect">
+                    
+                    <div class="contact-header">
+                        <h2>Felipe Da Silva Moreno</h2>
+                        <p class="role-text">Desarrollador de Software & Periodista</p>
+                    </div>
+                    
+                    <div class="contact-links">
+                        <a href="https://github.com/FMoreno99" target="_blank" class="contact-item">
+                            <i class="fab fa-github"></i>
+                            <span>github.com/FMoreno99</span>
+                        </a>
+                        <a href="https://www.linkedin.com/in/felipe-moreno99/" target="_blank" class="contact-item">
+                            <i class="fab fa-linkedin"></i>
+                            <span>linkedin.com/felipe-moreno99</span>
+                        </a>
+                        <a href="tel:+5511949899338" class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>+55 11 94989-9338</span>
+                        </a>
+                    </div>
+
+                    <div class="contact-divider"></div>
+
+                    <div class="contact-location">
+                        <h3>NUESTRO ESTUDIO</h3>
+                        <p class="location-text">
+                            <i class="fas fa-map-marker-alt"></i> Catedral de La Plata, Argentina
+                        </p>
+                        <div class="map-placeholder">
+                            <iframe 
+                                src="https://maps.google.com/maps?q=-34.9215,-57.9536&t=&z=16&ie=UTF8&iwloc=&output=embed" 
+                                width="100%" 
+                                height="100%" 
+                                style="border:0;" 
+                                allowfullscreen="" 
+                                loading="lazy">
+                            </iframe>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="fav-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-content glass-effect">
+            
+            <div class="modal-header">
+                <img id="modal-artist-img" src="" alt="Artist">
+                <div>
+                    <h3>RECLUTAR PARA LA CREW</h3>
+                    <p id="modal-artist-name" class="neon-text"></p>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Prioridad (No se puede repetir):</label>
+                <input type="number" id="fav-priority" placeholder="Ej: 1" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label>Estilo principal:</label>
+                <div class="style-selector">
+                    <button type="button" class="btn-style" onclick="selectStyle('Rap')">RAP</button>
+                    <button type="button" class="btn-style" onclick="selectStyle('Boombap')">BOOMBAP</button>
+                    <button type="button" class="btn-style" onclick="selectStyle('Trap')">TRAP</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Nota Personal:</label>
+                <textarea id="fav-note" placeholder="¿Por qué es clave?"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button onclick="confirmFavorite()" class="btn-primary">GUARDAR</button>
+                <button onclick="closeFavModal()" class="btn-secondary">CANCELAR</button>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="main-footer">
+        <div class="footer-content">
+            <p>© 2026 RAPRADAR | Felipe Da Silva Moreno</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('SW registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Fallo ao registrar SW:', error);
+                    });
+            });
+        }
+    </script>
+
+</body>
+</html>
