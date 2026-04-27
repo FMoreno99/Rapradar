@@ -6,13 +6,9 @@ let currentArtistForFav = '';
 let selectedStyle = '';
 let currentArtistData = null;
 
-// [CORRECCIÓN 3] Guardamos los últimos resultados y parámetros de búsqueda
-// para poder restaurarlos cuando el usuario vuelve desde el detalle.
 let lastSearchResults = [];
 let lastSearchParams  = { query: '', limit: '10', genre: 'rap', order: 'relevance', country: '' };
 
-// Last.fm a veces devuelve una imagen genérica gris en vez de nada.
-// Este hash identifica esa imagen y la reemplaza por un avatar generado.
 function getValidImageUrl(imageArray, artistName) {
     let url = (imageArray && imageArray.length > 0) ? imageArray[imageArray.length - 1]['#text'] : '';
     if (!url || url.includes('2a96ace8')) {
@@ -31,24 +27,18 @@ function navigate(viewId) {
     if (viewId === 'home')      loadFeaturedArtists();
     if (viewId === 'historico') renderHistory();
     if (viewId === 'favoritos') renderFavorites();
-
-    // [CORRECCIÓN RF4] Al volver a 'busca', si hay resultados guardados los restauramos
-    // en lugar de mostrar la vista vacía. El usuario retoma exactamente donde estaba.
-    if (viewId === 'busca') restoreSearchResults();
+    if (viewId === 'busca')     restoreSearchResults();
 }
 
-// [CORRECCIÓN RF4] Restaura visualmente los últimos resultados y el estado de los filtros.
 function restoreSearchResults() {
     if (lastSearchResults.length === 0) return;
 
-    // Restaurar valores de los controles
-    document.getElementById('search-input').value  = lastSearchParams.query;
-    document.getElementById('limit-filter').value  = lastSearchParams.limit;
-    document.getElementById('genre-filter').value  = lastSearchParams.genre;
-    document.getElementById('order-filter').value  = lastSearchParams.order;
+    document.getElementById('search-input').value   = lastSearchParams.query;
+    document.getElementById('limit-filter').value   = lastSearchParams.limit;
+    document.getElementById('genre-filter').value   = lastSearchParams.genre;
+    document.getElementById('order-filter').value   = lastSearchParams.order;
     document.getElementById('country-filter').value = lastSearchParams.country;
 
-    // Re-renderizar los resultados sin hacer un nuevo fetch
     const container = document.getElementById('search-results');
     container.innerHTML = '';
     renderArtists(lastSearchResults, 'search-results');
@@ -65,7 +55,6 @@ async function loadFeaturedArtists() {
         const data = await res.json();
         renderArtists(data.topartists.artist, 'featured-list');
     } catch (e) {
-        // [CORRECCIÓN OFFLINE] Si falla la red, buscamos artistas del historial en localStorage
         const history = JSON.parse(localStorage.getItem('history')) || [];
         if (history.length > 0) {
             container.innerHTML = '<p class="offline-msg">⚠️ Sin conexión. Mostrando artistas visitados recientemente.</p>';
@@ -87,24 +76,17 @@ async function searchArtists(reset = true) {
     const limit   = document.getElementById('limit-filter').value;
     const genre   = document.getElementById('genre-filter').value;
     const orden   = document.getElementById('order-filter').value;
-    // [CORRECCIÓN 3] Nuevo filtro de país
     const country = document.getElementById('country-filter').value.trim();
 
-    // Guardamos los parámetros actuales para poder restaurarlos al volver del detalle
     lastSearchParams = { query, limit, genre, order: orden, country };
 
     const container = document.getElementById('search-results');
     if (reset) container.innerHTML = '<p class="loading-msg">Buscando...</p>';
 
-    // Lógica de URL:
-    // - Si hay texto buscamos por nombre (con país si fue indicado)
-    // - Si no hay texto, traemos el top del género elegido
     let url;
     if (query) {
         url = `${BASE_URL}?method=artist.search&artist=${encodeURIComponent(query)}&api_key=${API_KEY}&format=json&limit=${limit}&page=${paginaActual}`;
-        if (country) url += `&country=${encodeURIComponent(country)}`;
     } else if (country) {
-        // Top artistas del país indicado para el género seleccionado
         url = `${BASE_URL}?method=geo.gettopartists&country=${encodeURIComponent(country)}&api_key=${API_KEY}&format=json&limit=${limit}&page=${paginaActual}`;
     } else {
         url = `${BASE_URL}?method=tag.gettopartists&tag=${genre}&api_key=${API_KEY}&format=json&limit=${limit}&page=${paginaActual}`;
@@ -115,16 +97,10 @@ async function searchArtists(reset = true) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        let resultados;
-        if (data.results)         resultados = data.results.artistmatches.artist;
-        else if (data.topartists) resultados = data.topartists.artist;
-        else if (data.topartists) resultados = data.topartists.artist;
-        // geo.gettopartists devuelve una estructura diferente
-        else if (data.topartists) resultados = data.topartists.artist;
-        else resultados = data.topartists?.artist || [];
-
-        // geo.gettopartists tiene su propia clave de respuesta
-        if (!resultados && data.topartists) resultados = data.topartists.artist;
+        // Cada endpoint de Last.fm devuelve los artistas en una clave distinta
+        const resultados = data.results?.artistmatches?.artist
+                        || data.topartists?.artist
+                        || [];
 
         if (!resultados || resultados.length === 0) {
             container.innerHTML = '<p class="error-msg-global">No se encontraron artistas. Probá con otro nombre o filtro.</p>';
@@ -133,23 +109,21 @@ async function searchArtists(reset = true) {
             return;
         }
 
-        // Ordenamiento local por nombre según lo que eligió el usuario
+        let ordenados = [...resultados];
         if (orden === 'az') {
-            resultados = [...resultados].sort((a, b) => a.name.localeCompare(b.name));
+            ordenados.sort((a, b) => a.name.localeCompare(b.name));
         } else if (orden === 'za') {
-            resultados = [...resultados].sort((a, b) => b.name.localeCompare(a.name));
+            ordenados.sort((a, b) => b.name.localeCompare(a.name));
         }
-        // "relevance" deja el orden que trae la API, que ya viene por popularidad
 
         if (reset) {
             container.innerHTML = '';
             lastSearchResults = [];
         }
 
-        // [CORRECCIÓN RF4] Acumulamos resultados para poder restaurarlos al volver
-        lastSearchResults = [...lastSearchResults, ...resultados];
+        lastSearchResults = [...lastSearchResults, ...ordenados];
 
-        renderArtists(resultados, 'search-results', !reset);
+        renderArtists(ordenados, 'search-results', !reset);
         document.getElementById('pagination-container').style.display = 'block';
     } catch (e) {
         container.innerHTML = '<p class="error-msg-global">Error de red. Verificá tu conexión e intentá nuevamente.</p>';
@@ -173,7 +147,6 @@ async function viewDetail(artistName) {
 
         const img = getValidImageUrl(artist.image, artist.name);
 
-        // La API de Last.fm inyecta un link "Read more" al final de la bio. Lo cortamos.
         let bio = artist.bio?.content || 'Sin biografía disponible para este artista.';
         bio = bio.split('<a')[0].trim();
 
@@ -191,8 +164,6 @@ async function viewDetail(artistName) {
         saveToHistory(artist);
         navigate('detalle');
     } catch (e) {
-        // [CORRECCIÓN OFFLINE] Si falla la red en el detalle, verificamos si el artista
-        // está guardado en favoritos o historial para mostrar la info que tengamos.
         const cached = getCachedArtist(artistName);
         if (cached) {
             document.getElementById('detail-content').innerHTML = `
@@ -215,12 +186,10 @@ async function viewDetail(artistName) {
     }
 }
 
-// [CORRECCIÓN OFFLINE] Busca un artista en favoritos o historial como fuente de datos offline.
 function getCachedArtist(name) {
     const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
     const fav = favorites.find(f => f.name === name);
     if (fav) return fav;
-
     const history = JSON.parse(localStorage.getItem('history')) || [];
     return history.find(h => h.name === name) || null;
 }
@@ -348,7 +317,6 @@ function removeFavorite(index) {
 
 function saveToHistory(artist) {
     let history = JSON.parse(localStorage.getItem('history')) || [];
-    // Si ya estaba, lo sacamos para que quede primero de vuelta
     history = history.filter(item => item.name !== artist.name);
     history.unshift({
         name: artist.name,
@@ -376,7 +344,6 @@ function renderArtists(artists, containerId, append = false) {
         const card = document.createElement('article');
         card.className = 'artist-card';
 
-        // El historial guarda la imagen como string, la API la trae como array
         const imgUrl = typeof artist.image === 'string'
             ? artist.image
             : getValidImageUrl(artist.image, artist.name);
