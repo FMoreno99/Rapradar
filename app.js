@@ -1,6 +1,4 @@
-// ==========================================
-// CONFIGURAÇÕES E ESTADO GLOBAL
-// ==========================================
+// Config & Global State
 const API_KEY = 'b03bf9eaecbc4475d6d9e97a82894b53';
 const BASE_URL = 'https://ws.audioscrobbler.com/2.0/';
 let paginaActual = 1;
@@ -8,42 +6,43 @@ let currentArtistForFav = '';
 let selectedStyle = '';
 let currentArtistData = null; 
 
-// Função de Fallback para Imagens (Gera iniciais se o Last.fm falhar)
+// Helpers & Utils
 function getValidImageUrl(imageArray, artistName) {
     let url = (imageArray && imageArray.length > 0) ? imageArray[imageArray.length - 1]['#text'] : '';
-    // Se a imagem for a "estrela genérica" ou estiver vazia, gera o avatar neon
+    
+    // Fallback generador de avatares para imágenes rotas/bloqueadas de Last.fm
     if (!url || url.includes("2a96ace8")) {
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=1a1a1a&color=E2FF00&size=300&font-size=0.33`;
     }
     return url;
 }
 
-// ==========================================
-// NAVEGAÇÃO
-// ==========================================
+// SPA Router
 function navigate(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
     const vistaActiva = document.getElementById(`${viewId}-view`);
+    
     if (vistaActiva) {
         vistaActiva.style.display = 'block';
         window.scrollTo(0, 0);
     }
 
+    // View Controllers
     if (viewId === 'home') loadFeaturedArtists();
     if (viewId === 'historico') renderHistory();
     if (viewId === 'favoritos') renderFavorites();
 }
 
-// ==========================================
-// CHAMADAS DE API
-// ==========================================
+// API Services
 async function loadFeaturedArtists() {
     const url = `${BASE_URL}?method=tag.gettopartists&tag=rap&api_key=${API_KEY}&format=json&limit=10`;
     try {
         const response = await fetch(url);
         const data = await response.json();
         renderArtists(data.topartists.artist, 'featured-list');
-    } catch (e) { console.error("Erro ao carregar home:", e); }
+    } catch (e) { 
+        console.error("Fetch error (loadFeaturedArtists):", e); 
+    }
 }
 
 async function searchArtists(reset = true) {
@@ -51,6 +50,7 @@ async function searchArtists(reset = true) {
         paginaActual = 1; 
         document.getElementById('search-results').innerHTML = ''; 
     }
+    
     const query = document.getElementById('search-input').value.trim();
     const limit = document.getElementById('limit-filter').value;
     const genre = document.getElementById('genre-filter').value;
@@ -63,12 +63,18 @@ async function searchArtists(reset = true) {
         const response = await fetch(url);
         const data = await response.json();
         const resultados = data.results ? data.results.artistmatches.artist : data.topartists.artist;
+        
         renderArtists(resultados, 'search-results', !reset);
         document.getElementById('pagination-container').style.display = 'block';
-    } catch (e) { alert("Error al buscar."); }
+    } catch (e) { 
+        alert("Error de red al buscar. Intente nuevamente."); 
+    }
 }
 
-function loadMoreResults() { paginaActual++; searchArtists(false); }
+function loadMoreResults() { 
+    paginaActual++; 
+    searchArtists(false); 
+}
 
 async function viewDetail(artistName) {
     const url = `${BASE_URL}?method=artist.getinfo&artist=${encodeURIComponent(artistName)}&api_key=${API_KEY}&format=json`;
@@ -81,6 +87,8 @@ async function viewDetail(artistName) {
 
         let detailImg = getValidImageUrl(artist.image, artist.name);
         let bioHtml = artist.bio && artist.bio.content ? artist.bio.content : 'Sin biografía.';
+        
+        // Limpieza de markup inyectado por la API
         bioHtml = bioHtml.split('<a')[0].trim(); 
 
         document.getElementById('detail-content').innerHTML = `
@@ -96,19 +104,18 @@ async function viewDetail(artistName) {
         `;
         saveToHistory(artist); 
         navigate('detalle');
-    } catch (e) { console.error("Erro no detalhe:", e); }
+    } catch (e) { 
+        console.error("Fetch error (viewDetail):", e); 
+    }
 }
 
-// ==========================================
-// MI CREW (FAVORITOS)
-// ==========================================
+// Module: Favorites (Mi Crew)
 function openFavoriteForm(artistName) {
     currentArtistForFav = artistName;
     document.getElementById('modal-artist-name').innerText = artistName;
+    document.getElementById('modal-artist-img').src = getValidImageUrl(currentArtistData.image, artistName);
     
-    let imgForModal = getValidImageUrl(currentArtistData.image, artistName);
-    document.getElementById('modal-artist-img').src = imgForModal;
-
+    // Reset modal state
     document.getElementById('fav-priority').value = '';
     document.getElementById('fav-note').value = '';
     selectedStyle = ''; 
@@ -127,6 +134,8 @@ function confirmFavorite() {
     const note = document.getElementById('fav-note').value.trim();
 
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    
+    // Reglas de negocio: Prioridad única
     if (favorites.some(f => f.priority === priority)) {
         return alert(`La prioridad ${priority} ya está en uso. Elige otro número.`);
     }
@@ -151,7 +160,9 @@ function confirmFavorite() {
     alert("¡Guardado en tu Crew!");
 }
 
-function closeFavModal() { document.getElementById('fav-modal').style.display = 'none'; }
+function closeFavModal() { 
+    document.getElementById('fav-modal').style.display = 'none'; 
+}
 
 function renderFavorites() {
     const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
@@ -185,20 +196,17 @@ function removeFavorite(index) {
     renderFavorites();
 }
 
-// ==========================================
-// HISTÓRICO
-// ==========================================
+// Module: History Tracker
 function saveToHistory(artist) {
     let history = JSON.parse(localStorage.getItem('history')) || [];
     history = history.filter(item => item.name !== artist.name);
     
-    // CORREÇÃO: Salva a URL final (string) para persistência
-    let finalImageUrl = getValidImageUrl(artist.image, artist.name);
-    
     history.unshift({ 
         name: artist.name, 
-        image: finalImageUrl 
+        image: getValidImageUrl(artist.image, artist.name) 
     });
+    
+    // Limitar persistencia a 15 items
     localStorage.setItem('history', JSON.stringify(history.slice(0, 15)));
 }
 
@@ -207,9 +215,7 @@ function renderHistory() {
     renderArtists(history, 'history-list');
 }
 
-// ==========================================
-// RENDERIZADOR UNIVERSAL (CORRIGIDO)
-// ==========================================
+// Shared UI Renderers
 function renderArtists(artists, containerId, append = false) {
     const container = document.getElementById(containerId);
     if (!append) container.innerHTML = ''; 
@@ -218,9 +224,7 @@ function renderArtists(artists, containerId, append = false) {
         const card = document.createElement('article');
         card.className = 'artist-card';
         
-        // CORREÇÃO PARA O RECENTES:
-        // Se 'artist.image' já for uma string (URL do Histórico), usa ela.
-        // Se for um objeto (Vindo da API), passa pela função de validação.
+        // Adaptador de payload (API object vs LocalStorage string)
         let imgUrl = typeof artist.image === 'string' 
             ? artist.image 
             : getValidImageUrl(artist.image, artist.name);
@@ -234,12 +238,17 @@ function renderArtists(artists, containerId, append = false) {
     });
 }
 
+// Init / Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
     navigate('home');
+    
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', (e) => {
             const target = e.target.getAttribute('href').replace('#', '');
-            if (target) { e.preventDefault(); navigate(target); }
+            if (target) { 
+                e.preventDefault(); 
+                navigate(target); 
+            }
         });
     });
 });
