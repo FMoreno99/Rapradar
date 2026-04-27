@@ -1,6 +1,3 @@
-// ==========================================
-// CONFIGURAÇÕES E ESTADO GLOBAL
-// ==========================================
 const API_KEY = 'b03bf9eaecbc4475d6d9e97a82894b53';
 const BASE_URL = 'https://ws.audioscrobbler.com/2.0/';
 
@@ -9,35 +6,28 @@ let currentArtistForFav = '';
 let selectedStyle = '';
 let currentArtistData = null;
 
-// Função de Fallback para Imagens (Gera iniciais se o Last.fm falhar)
+// Last.fm a veces devuelve una imagen genérica gris en vez de nada.
+// Este hash identifica esa imagen y la reemplaza por un avatar generado.
 function getValidImageUrl(imageArray, artistName) {
     let url = (imageArray && imageArray.length > 0) ? imageArray[imageArray.length - 1]['#text'] : '';
-    // Se a imagem for a "estrela genérica" ou estiver vazia, gera o avatar neon
-    if (!url || url.includes("2a96ace8")) {
+    if (!url || url.includes('2a96ace8')) {
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(artistName)}&background=1a1a1a&color=E2FF00&size=300&font-size=0.33`;
     }
     return url;
 }
 
-// ==========================================
-// NAVEGAÇÃO
-// ==========================================
 function navigate(viewId) {
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-    const vistaActiva = document.getElementById(`${viewId}-view`);
-    if (vistaActiva) {
-        vistaActiva.style.display = 'block';
+    const vista = document.getElementById(`${viewId}-view`);
+    if (vista) {
+        vista.style.display = 'block';
         window.scrollTo(0, 0);
     }
-
     if (viewId === 'home') loadFeaturedArtists();
     if (viewId === 'historico') renderHistory();
     if (viewId === 'favoritos') renderFavorites();
 }
 
-// ==========================================
-// CHAMADAS DE API
-// ==========================================
 async function loadFeaturedArtists() {
     const container = document.getElementById('featured-list');
     container.innerHTML = '<p class="loading-msg">Cargando artistas destacados...</p>';
@@ -47,7 +37,10 @@ async function loadFeaturedArtists() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         renderArtists(data.topartists.artist, 'featured-list');
-    } catch (e) { console.error("Erro ao carregar home:", e); }
+    } catch (e) {
+        container.innerHTML = '<p class="error-msg-global">No se pudieron cargar los artistas. Verificá tu conexión e intentá de nuevo.</p>';
+        console.error(e);
+    }
 }
 
 async function searchArtists(reset = true) {
@@ -55,6 +48,7 @@ async function searchArtists(reset = true) {
         paginaActual = 1;
         document.getElementById('search-results').innerHTML = '';
     }
+
     const query = document.getElementById('search-input').value.trim();
     const limit = document.getElementById('limit-filter').value;
     const genre = document.getElementById('genre-filter').value;
@@ -69,20 +63,39 @@ async function searchArtists(reset = true) {
         : `${BASE_URL}?method=tag.gettopartists&tag=${genre}&api_key=${API_KEY}&format=json&limit=${limit}&page=${paginaActual}`;
 
     try {
-        const response = await fetch(url);
-        const data = await response.json();
-        const resultados = data.results ? data.results.artistmatches.artist : data.topartists.artist;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        let resultados = data.results ? data.results.artistmatches.artist : data.topartists.artist;
+
+        if (!resultados || resultados.length === 0) {
+            container.innerHTML = '<p class="error-msg-global">No se encontraron artistas. Probá con otro nombre o filtro.</p>';
+            document.getElementById('pagination-container').style.display = 'none';
+            return;
+        }
+
+        // Ordenamiento local por nombre según lo que eligió el usuario
+        if (orden === 'az') {
+            resultados = [...resultados].sort((a, b) => a.name.localeCompare(b.name));
+        } else if (orden === 'za') {
+            resultados = [...resultados].sort((a, b) => b.name.localeCompare(a.name));
+        }
+        // "relevance" deja el orden que trae la API, que ya viene por popularidad
+
+        if (reset) container.innerHTML = '';
         renderArtists(resultados, 'search-results', !reset);
         document.getElementById('pagination-container').style.display = 'block';
-    } catch (e) { alert("Error al buscar."); }
+    } catch (e) {
+        container.innerHTML = '<p class="error-msg-global">Error de red. Verificá tu conexión e intentá nuevamente.</p>';
+    }
 }
 
-function loadMoreResults() { paginaActual++; searchArtists(false); }
+function loadMoreResults() {
+    paginaActual++;
+    searchArtists(false);
+}
 
 async function viewDetail(artistName) {
-    navigate('detalle');
-    document.getElementById('detail-content').innerHTML = '<p class="loading-msg">Cargando información del artista...</p>';
-
     const url = `${BASE_URL}?method=artist.getinfo&artist=${encodeURIComponent(artistName)}&api_key=${API_KEY}&format=json`;
     try {
         const res = await fetch(url);
@@ -91,35 +104,35 @@ async function viewDetail(artistName) {
         const artist = data.artist;
         currentArtistData = artist;
 
-        let detailImg = getValidImageUrl(artist.image, artist.name);
-        let bioHtml = artist.bio && artist.bio.content ? artist.bio.content : 'Sin biografía.';
-        bioHtml = bioHtml.split('<a')[0].trim(); 
+        const img = getValidImageUrl(artist.image, artist.name);
+
+        // La API de Last.fm inyecta un link "Read more" al final de la bio. Lo cortamos.
+        let bio = artist.bio?.content || 'Sin biografía disponible para este artista.';
+        bio = bio.split('<a')[0].trim();
 
         document.getElementById('detail-content').innerHTML = `
             <div class="detail-wrapper">
                 <img src="${img}" alt="${artist.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(artist.name)}&background=1a1a1a&color=E2FF00&size=500'">
                 <h2>${artist.name}</h2>
                 <div class="bio">${bio}</div>
-                <div class="actions">
+                <div class="actions" style="display:flex; gap:10px; margin-top:20px;">
                     <button onclick="openFavoriteForm('${artist.name.replace(/'/g, "\\'")}')" class="btn-primary">AÑADIR A MI CREW</button>
                     <button onclick="navigate('busca')" class="btn-secondary">VOLVER</button>
                 </div>
             </div>
         `;
-        saveToHistory(artist); 
+        saveToHistory(artist);
         navigate('detalle');
-    } catch (e) { console.error("Erro no detalhe:", e); }
+    } catch (e) {
+        document.getElementById('detail-content').innerHTML = '<p class="error-msg-global">No se pudo cargar el artista. Verificá tu conexión e intentá de nuevo.</p>';
+        console.error(e);
+    }
 }
 
-// ==========================================
-// MI CREW (FAVORITOS)
-// ==========================================
 function openFavoriteForm(artistName) {
     currentArtistForFav = artistName;
     document.getElementById('modal-artist-name').innerText = artistName;
-    
-    let imgForModal = getValidImageUrl(currentArtistData.image, artistName);
-    document.getElementById('modal-artist-img').src = imgForModal;
+    document.getElementById('modal-artist-img').src = getValidImageUrl(currentArtistData.image, artistName);
 
     document.getElementById('fav-priority').value = '';
     document.getElementById('fav-note').value = '';
@@ -164,17 +177,25 @@ function confirmFavorite() {
 
     let hasError  = false;
     let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-    if (favorites.some(f => f.priority === priority)) {
-        return alert(`La prioridad ${priority} ya está en uso. Elige otro número.`);
+
+    if (priorityVal === '' || isNaN(priority) || priority <= 0) {
+        showFieldError('priority-error', 'Ingresá un número mayor a cero.');
+        hasError = true;
+    } else if (favorites.some(f => f.priority === priority)) {
+        showFieldError('priority-error', `La prioridad ${priority} ya está en uso. Elegí otro número.`);
+        hasError = true;
     }
 
-    if (isNaN(priority) || priority <= 0 || !selectedStyle) {
-        return alert("Completa la prioridad y el estilo.");
+    if (!selectedStyle) {
+        showFieldError('style-error', 'Seleccioná un estilo musical.');
+        hasError = true;
     }
 
-    let imgToSave = getValidImageUrl(currentArtistData.image, currentArtistForFav);
-    let bioToSave = (currentArtistData.bio && currentArtistData.bio.content) ? currentArtistData.bio.content : 'Sin biografía.';
-    bioToSave = bioToSave.split('<a')[0].trim();
+    if (hasError) return;
+
+    const img = getValidImageUrl(currentArtistData.image, currentArtistForFav);
+    let bio = currentArtistData.bio?.content || 'Sin biografía.';
+    bio = bio.split('<a')[0].trim();
 
     favorites.push({ name: currentArtistForFav, priority, category: selectedStyle, note, image: img, bio });
     favorites.sort((a, b) => a.priority - b.priority);
@@ -184,7 +205,16 @@ function confirmFavorite() {
     showToast(`¡${currentArtistForFav} fue reclutado para tu Crew!`);
 }
 
-function closeFavModal() { document.getElementById('fav-modal').style.display = 'none'; }
+function closeFavModal() {
+    document.getElementById('fav-modal').style.display = 'none';
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast-notification');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
 
 function renderFavorites() {
     const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
@@ -220,23 +250,14 @@ function removeFavorite(index) {
     showToast(`${nombre} fue eliminado de tu Crew.`);
 }
 
-// ==========================================
-// HISTÓRICO
-// ==========================================
 function saveToHistory(artist) {
     let history = JSON.parse(localStorage.getItem('history')) || [];
     // Si ya estaba, lo sacamos para que quede primero de vuelta
     history = history.filter(item => item.name !== artist.name);
-    
-    // CORREÇÃO: Salva a URL final (string) para persistência
-    let finalImageUrl = getValidImageUrl(artist.image, artist.name);
-    
-    history.unshift({ 
-        name: artist.name, 
-        image: finalImageUrl 
+    history.unshift({
+        name: artist.name,
+        image: getValidImageUrl(artist.image, artist.name)
     });
-    
-    // Limitar persistencia a 15 items
     localStorage.setItem('history', JSON.stringify(history.slice(0, 15)));
 }
 
@@ -251,9 +272,6 @@ function renderHistory() {
     renderArtists(history, 'history-list');
 }
 
-// ==========================================
-// RENDERIZADOR UNIVERSAL (CORRIGIDO)
-// ==========================================
 function renderArtists(artists, containerId, append = false) {
     const container = document.getElementById(containerId);
     if (!append) container.innerHTML = '';
@@ -261,12 +279,10 @@ function renderArtists(artists, containerId, append = false) {
     artists.forEach(artist => {
         const card = document.createElement('article');
         card.className = 'artist-card';
-        
-        // CORREÇÃO PARA O RECENTES:
-        // Se 'artist.image' já for uma string (URL do Histórico), usa ela.
-        // Se for um objeto (Vindo da API), passa pela função de validação.
-        let imgUrl = typeof artist.image === 'string' 
-            ? artist.image 
+
+        // El historial guarda la imagen como string, la API la trae como array
+        const imgUrl = typeof artist.image === 'string'
+            ? artist.image
             : getValidImageUrl(artist.image, artist.name);
 
         card.innerHTML = `
@@ -290,13 +306,17 @@ function initCharCounter() {
     });
 }
 
-// Init / Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
     navigate('home');
+    initCharCounter();
+
     document.querySelectorAll('.nav-links a').forEach(link => {
         link.addEventListener('click', e => {
             const target = e.target.getAttribute('href').replace('#', '');
-            if (target) { e.preventDefault(); navigate(target); }
+            if (target) {
+                e.preventDefault();
+                navigate(target);
+            }
         });
     });
 });
