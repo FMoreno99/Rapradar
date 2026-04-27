@@ -46,20 +46,39 @@
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="MC, BANDA O DJ (o dejá en blanco para ver el Top)...">
                 <div class="filters">
-                    <select id="limit-filter">
-                        <option value="10">Ver 10</option>
-                        <option value="20">Ver 20</option>
-                    </select>
+                    <!-- Filtro 1: Género / Top -->
                     <select id="genre-filter">
                         <option value="rap">Top Rap</option>
                         <option value="trap">Top Trap</option>
                         <option value="drill">Top Drill</option>
                         <option value="boombap">Top Boom Bap</option>
                     </select>
+                    <!-- Filtro 2: Ordenamiento -->
                     <select id="order-filter">
                         <option value="relevance">Relevancia</option>
                         <option value="az">Nombre A-Z</option>
                         <option value="za">Nombre Z-A</option>
+                    </select>
+                    <!-- Filtro 3: País (geo.gettopartists de Last.fm) -->
+                    <select id="country-filter">
+                        <option value="">Todo el mundo</option>
+                        <option value="Argentina">Argentina</option>
+                        <option value="Brazil">Brasil</option>
+                        <option value="United States">Estados Unidos</option>
+                        <option value="United Kingdom">Reino Unido</option>
+                        <option value="France">Francia</option>
+                        <option value="Germany">Alemania</option>
+                        <option value="Spain">España</option>
+                        <option value="Mexico">México</option>
+                        <option value="Colombia">Colombia</option>
+                        <option value="Chile">Chile</option>
+                    </select>
+                </div>
+                <!-- Filtro de cantidad separado para no confundir con los de búsqueda -->
+                <div class="filters" style="margin-top:-8px;">
+                    <select id="limit-filter" style="flex:0 0 auto; width:auto;">
+                        <option value="10">Ver 10 resultados</option>
+                        <option value="20">Ver 20 resultados</option>
                     </select>
                 </div>
                 <button onclick="searchArtists()" class="btn-primary">BUSCAR FLOW</button>

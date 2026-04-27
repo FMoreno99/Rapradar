@@ -165,7 +165,7 @@ main {
 }
 
 /* ==========================================
-   MENSAGENS DE ESTADO (LOADING / ERROR)
+   MENSAGENS DE ESTADO (LOADING / ERROR / OFFLINE)
 ========================================== */
 .loading-msg {
     grid-column: 1 / -1;
@@ -194,6 +194,27 @@ main {
     border: 1px solid rgba(255, 107, 107, 0.2);
     border-radius: 8px;
     background: rgba(255, 107, 107, 0.05);
+}
+
+/* [NUEVO] Mensaje informativo para modo offline */
+.offline-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--neon-yellow);
+    padding: 12px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid rgba(226, 255, 0, 0.2);
+    border-radius: 8px;
+    background: rgba(226, 255, 0, 0.05);
+}
+
+.empty-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #555;
+    padding: 60px 30px;
+    font-size: 0.9rem;
 }
 
 /* ==========================================
