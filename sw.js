@@ -4,33 +4,35 @@ const urlsToCache = [
     './index.html',
     './style.css',
     './app.js',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
-// Instalação: Guarda os ficheiros essenciais na Cache
+// Instalación: guarda los archivos esenciales en la Cache
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Cache aberta com sucesso');
+                console.log('Cache abierta con éxito');
                 return cache.addAll(urlsToCache);
             })
     );
 });
 
-// Interceção: Tenta aceder à cache primeiro (Offline)
+// Intercepción: intenta acceder a la cache primero (Offline)
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                // Se o ficheiro estiver na cache, retorna-o. Caso contrário, vai buscá-lo à internet.
+                // Si el archivo está en la cache, lo retorna. Si no, va a buscarlo a internet.
                 return response || fetch(event.request);
             })
     );
 });
 
-// Ativação: Limpa caches antigas se atualizares a aplicação
+// Activación: limpia caches antiguas si actualizás la app
 self.addEventListener('activate', event => {
     const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
